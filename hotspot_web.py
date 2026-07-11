@@ -131,17 +131,27 @@ def get_connection_details(conn_name):
     """
     Retrieves the SSID and password of a specific NetworkManager connection.
     """
+    ssid = conn_name
+    password = ""
     try:
-        result = subprocess.run(
-            ['nmcli', '-s', '-g', '802-11-wireless.ssid,802-11-wireless-security.psk', 'connection', 'show', conn_name],
-            capture_output=True, text=True, check=True
+        # Get SSID
+        res_ssid = subprocess.run(
+            ['nmcli', '-s', '-g', '802-11-wireless.ssid', 'connection', 'show', conn_name],
+            capture_output=True, text=True
         )
-        lines = result.stdout.strip().split('\n')
-        ssid = lines[0] if len(lines) > 0 else ""
-        password = lines[1] if len(lines) > 1 else ""
-        return ssid, password
+        if res_ssid.returncode == 0:
+            ssid = res_ssid.stdout.strip()
+            
+        # Get PSK (will fail or be empty for open networks)
+        res_psk = subprocess.run(
+            ['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', conn_name],
+            capture_output=True, text=True
+        )
+        if res_psk.returncode == 0:
+            password = res_psk.stdout.strip()
     except Exception:
-        return conn_name, "[HIDDEN]"
+        pass
+    return ssid, password
 
 def get_connected_clients(interface='wlan0'):
     """
@@ -203,13 +213,16 @@ def api_start():
     password = data.get('password')
     interface = data.get('interface', 'wlan0')
     
-    if not ssid or not password:
-        return jsonify({'success': False, 'error': 'SSID and Password are required'}), 400
+    if not ssid:
+        return jsonify({'success': False, 'error': 'SSID is required'}), 400
         
-    if len(password) < 8:
+    if password and len(password) < 8:
         return jsonify({'success': False, 'error': 'Password must be at least 8 characters long'}), 400
 
-    add_log(f"Starting Hotspot SSID: '{ssid}' on interface '{interface}'...")
+    if password:
+        add_log(f"Starting WPA2 Hotspot SSID: '{ssid}' on interface '{interface}'...")
+    else:
+        add_log(f"Starting OPEN Hotspot SSID: '{ssid}' on interface '{interface}'...")
     
     # Run in a background thread so the HTTP response is not blocked
     def start_thread():
@@ -218,13 +231,24 @@ def api_start():
         subprocess.run(['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], capture_output=True)
         
         # Step 2: Start the hotspot
-        add_log(f"Running nmcli wifi hotspot command...")
-        cmd = ['sudo', 'nmcli', 'device', 'wifi', 'hotspot', 'ssid', ssid, 'password', password, 'ifname', interface]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        if password:
+            add_log(f"Running nmcli wifi hotspot command...")
+            cmd = ['sudo', 'nmcli', 'device', 'wifi', 'hotspot', 'ssid', ssid, 'password', password, 'ifname', interface]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+        else:
+            add_log(f"Creating open hotspot connection profile...")
+            # Create connection profile
+            subprocess.run(['sudo', 'nmcli', 'connection', 'add', 'type', 'wifi', 'ifname', interface, 'con-name', 'Hotspot', 'autoconnect', 'no', 'ssid', ssid, 'mode', 'ap'], capture_output=True)
+            # Modify connection settings
+            subprocess.run(['sudo', 'nmcli', 'connection', 'modify', 'Hotspot', '802-11-wireless.mode', 'ap', 'ipv4.method', 'shared'], capture_output=True)
+            subprocess.run(['sudo', 'nmcli', 'connection', 'modify', 'Hotspot', '802-11-wireless-security.key-mgmt', 'none'], capture_output=True)
+            # Bring connection up
+            add_log("Bringing open hotspot connection up...")
+            result = subprocess.run(['sudo', 'nmcli', 'connection', 'up', 'Hotspot'], capture_output=True, text=True)
         
         if result.returncode == 0:
             add_log("SUCCESS: Hotspot started successfully!")
-            add_log(f"IP Address: 190.168.4.1 (typical for nmcli)")
+            add_log(f"IP Address: 192.168.4.1 (typical for nmcli)")
         else:
             add_log(f"ERROR: Failed to start hotspot.")
             add_log(f"Details: {result.stderr.strip() or result.stdout.strip()}")

@@ -486,7 +486,7 @@
 
                 <div class="lcd-footer">
                     <span>CLIENTS: <span id="lcd-clients-count">0</span></span>
-                    <span>WPA2-PSK</span>
+                    <span id="lcd-sec-type">WPA2-PSK</span>
                 </div>
             </div>
 
@@ -507,7 +507,7 @@
                 <div class="form-group">
                     <label for="password">Password (WPA2 Key)</label>
                     <div class="input-wrapper">
-                        <input type="password" id="password" class="form-control" placeholder="Min. 8 karakter" value="flipper123">
+                        <input type="password" id="password" class="form-control" placeholder="Kosongkan untuk OPEN / Tanpa Password" value="flipper123">
                         <button class="toggle-password" id="toggle-password-btn" onclick="togglePasswordVisibility()">SHOW</button>
                     </div>
                 </div>
@@ -594,13 +594,13 @@ _.-'  '--.
             const password = document.getElementById("password").value;
             const actionBtn = document.getElementById("action-btn");
             
-            if (!ssid || !password) {
-                alert("SSID dan Password tidak boleh kosong!");
+            if (!ssid) {
+                alert("SSID tidak boleh kosong!");
                 return;
             }
 
-            if (password.length < 8) {
-                alert("Password minimal harus 8 karakter!");
+            if (password && password.length < 8) {
+                alert("Password minimal harus 8 karakter (atau kosongkan untuk OPEN)!");
                 return;
             }
 
@@ -734,9 +734,10 @@ _.-'  '--.
                     apState.style.color = "var(--lcd-bg)";
                     
                     document.getElementById("lcd-ssid").textContent = data.ssid || "-";
-                    document.getElementById("lcd-pass").textContent = data.password || "-";
+                    document.getElementById("lcd-pass").textContent = data.password ? data.password : "[OPEN]";
                     document.getElementById("lcd-ip").textContent = activeIfaceIp;
                     document.getElementById("lcd-clients-count").textContent = data.clients_count;
+                    document.getElementById("lcd-sec-type").textContent = data.password ? "WPA2-PSK" : "OPEN";
                     
                     if (isTransitioning) {
                         isTransitioning = false;

@@ -102,6 +102,24 @@ def get_interface_ip(interface):
     
     return ""
 
+def get_default_internet_interface():
+    """
+    Detects the active outgoing interface that has internet connection.
+    """
+    try:
+        res = subprocess.run(['ip', 'route'], capture_output=True, text=True)
+        for line in res.stdout.split('\n'):
+            if line.startswith('default via'):
+                parts = line.split()
+                if 'dev' in parts:
+                    idx = parts.index('dev')
+                    if idx + 1 < len(parts):
+                        return parts[idx + 1]
+    except Exception:
+        pass
+    return None
+
+
 def get_hotspot_status(interface='wlan0'):
     """
     Checks if there is an active wireless connection on the specified interface.
@@ -253,9 +271,23 @@ def api_start():
         if result.returncode == 0:
             add_log("SUCCESS: Hotspot started successfully!")
             add_log(f"IP Address: 192.168.4.1 (typical for nmcli)")
+            
+            # Setup dynamic non-persistent routing/NAT for internet sharing
+            internet_iface = get_default_internet_interface()
+            if internet_iface and internet_iface != interface:
+                add_log(f"Enabling internet sharing from '{internet_iface}' to '{interface}'...")
+                subprocess.run(['sudo', 'sysctl', '-w', 'net.ipv4.ip_forward=1'], capture_output=True)
+                subprocess.run(['sudo', 'iptables', '-t', 'nat', '-F'], capture_output=True)
+                subprocess.run(['sudo', 'iptables', '-t', 'nat', '-A', 'POSTROUTING', '-o', internet_iface, '-j', 'MASQUERADE'], capture_output=True)
+                subprocess.run(['sudo', 'iptables', '-A', 'FORWARD', '-i', internet_iface, '-o', interface, '-m', 'state', '--state', 'RELATED,ESTABLISHED', '-j', 'ACCEPT'], capture_output=True)
+                subprocess.run(['sudo', 'iptables', '-A', 'FORWARD', '-i', interface, '-o', internet_iface, '-j', 'ACCEPT'], capture_output=True)
+                add_log("SUCCESS: Internet sharing enabled.")
+            else:
+                add_log("WARNING: No active outgoing internet interface found (e.g. eth0). Clients won't have internet access.")
         else:
             add_log(f"ERROR: Failed to start hotspot.")
             add_log(f"Details: {result.stderr.strip() or result.stdout.strip()}")
+
             
     threading.Thread(target=start_thread).start()
     return jsonify({'success': True, 'message': 'Hotspot starting process initiated.'})
@@ -285,6 +317,13 @@ def api_stop():
             # Fallback hard disconnect
             subprocess.run(['sudo', 'nmcli', 'device', 'disconnect', interface], capture_output=True)
             add_log(f"Interface {interface} disconnected.")
+            
+        # Clean up internet forwarding rules
+        add_log("Disabling internet sharing...")
+        subprocess.run(['sudo', 'sysctl', '-w', 'net.ipv4.ip_forward=0'], capture_output=True)
+        subprocess.run(['sudo', 'iptables', '-F'], capture_output=True)
+        subprocess.run(['sudo', 'iptables', '-t', 'nat', '-F'], capture_output=True)
+
             
     threading.Thread(target=stop_thread).start()
     return jsonify({'success': True, 'message': 'Hotspot stopping process initiated.'})
@@ -320,9 +359,13 @@ def cleanup_on_exit():
     cleanup_commands = [
         (['sudo', 'nmcli', 'connection', 'down', 'Hotspot'], "Stopping Hotspot connection"),
         (['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], "Deleting Hotspot connection"),
+        (['sudo', 'sysctl', '-w', 'net.ipv4.ip_forward=0'], "Disabling IP forwarding"),
+        (['sudo', 'iptables', '-F'], "Clearing iptables rules"),
+        (['sudo', 'iptables', '-t', 'nat', '-F'], "Clearing iptables NAT rules"),
         (['sudo', 'systemctl', 'start', 'dnsmasq'], "Starting dnsmasq service"),
         (['sudo', 'ufw', '--force', 'enable'], "Enabling UFW firewall")
     ]
+
     
     for cmd, desc in cleanup_commands:
         try:

@@ -302,13 +302,25 @@ if __name__ == '__main__':
 
 def cleanup_on_exit():
     print("\n[SYSTEM] Application shutting down. Restoring services and cleaning up hotspot...")
-    # Delete the connection profile to clean up
-    subprocess.run(['sudo', 'nmcli', 'connection', 'down', 'Hotspot'], capture_output=True)
-    subprocess.run(['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], capture_output=True)
     
-    # Restore dnsmasq and UFW firewall
-    subprocess.run(['sudo', 'systemctl', 'start', 'dnsmasq'], capture_output=True)
-    subprocess.run(['sudo', 'ufw', 'enable'], capture_output=True)
+    cleanup_commands = [
+        (['sudo', 'nmcli', 'connection', 'down', 'Hotspot'], "Stopping Hotspot connection"),
+        (['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], "Deleting Hotspot connection"),
+        (['sudo', 'systemctl', 'start', 'dnsmasq'], "Starting dnsmasq service"),
+        (['sudo', 'ufw', 'enable'], "Enabling UFW firewall")
+    ]
+    
+    for cmd, desc in cleanup_commands:
+        try:
+            print(f"[SYSTEM] {desc}...")
+            subprocess.run(cmd, capture_output=True, timeout=5)
+        except subprocess.TimeoutExpired:
+            print(f"[WARNING] Timeout while: {desc}")
+        except KeyboardInterrupt:
+            print(f"[WARNING] Interrupted while: {desc}. Continuing with other cleanup tasks...")
+        except Exception as e:
+            print(f"[ERROR] Failed to execute '{desc}': {e}")
+            
     print("[SYSTEM] Cleanup finished. Goodbye!")
 
 # Register cleanup handler

@@ -358,28 +358,36 @@
             box-shadow: 0 0 15px rgba(255, 77, 77, 0.2);
         }
 
-        .btn-exit {
+        .btn-shutdown-icon {
             background-color: transparent;
-            color: #888;
-            border: 2px solid #333;
-            margin-top: 8px;
+            color: #555;
+            border: 2px solid #222;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .btn-exit:hover {
+        .btn-shutdown-icon:hover {
             color: #ff4d4d;
             border-color: #ff4d4d;
-            background-color: rgba(255, 77, 77, 0.05);
-            box-shadow: 0 0 12px rgba(255, 77, 77, 0.2);
+            background-color: rgba(255, 77, 77, 0.08);
+            box-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
         }
 
-
-        .btn-action:disabled {
+        .btn-action:disabled, .btn-shutdown-icon:disabled {
             background-color: #333 !important;
             color: #777 !important;
             border-color: transparent !important;
             cursor: not-allowed;
             box-shadow: none !important;
         }
+
 
         /* Bottom Section: Retro Console Log */
         .console-card {
@@ -506,11 +514,17 @@
     <div class="container">
         <header>
             <h1>WIFI HOTSPOT</h1>
-            <div class="device-info">
-                DEVBOARD v1.0.0<br>
-                RPI-HOTSPOT
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="device-info">
+                    DEVBOARD v1.0.0<br>
+                    RPI-HOTSPOT
+                </div>
+                <button class="btn-shutdown-icon" id="exit-btn" onclick="handleExitButtonClick()" title="Shutdown Server">
+                    ⏻
+                </button>
             </div>
         </header>
+
 
         <div class="main-layout">
             <!-- Left: LCD Display -->
@@ -587,16 +601,14 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 10px; display: flex; flex-direction: column;">
+                <div style="margin-top: 10px;">
                     <button class="btn-action btn-start" id="action-btn" onclick="handleActionButtonClick()">
                         Start Hotspot
-                    </button>
-                    <button class="btn-action btn-exit" id="exit-btn" onclick="handleExitButtonClick()">
-                        Shutdown Server
                     </button>
                 </div>
             </div>
         </div>
+
 
 
         <!-- Terminal log outputs -->
@@ -763,9 +775,9 @@ _.-'  '--.
             
             actionBtn.disabled = true;
             exitBtn.disabled = true;
-            exitBtn.textContent = "Shutting down...";
             document.getElementById("dolphin-mascot").textContent = dolphinTransition;
             document.getElementById("dolphin-speech").textContent = "Goodbye...";
+;
 
             fetch('/api/shutdown', {
                 method: 'POST',

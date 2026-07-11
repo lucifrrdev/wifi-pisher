@@ -241,7 +241,8 @@ def api_start():
             subprocess.run(['sudo', 'nmcli', 'connection', 'add', 'type', 'wifi', 'ifname', interface, 'con-name', 'Hotspot', 'autoconnect', 'no', 'ssid', ssid, 'mode', 'ap'], capture_output=True)
             # Modify connection settings
             subprocess.run(['sudo', 'nmcli', 'connection', 'modify', 'Hotspot', '802-11-wireless.mode', 'ap', 'ipv4.method', 'shared'], capture_output=True)
-            subprocess.run(['sudo', 'nmcli', 'connection', 'modify', 'Hotspot', '802-11-wireless-security.key-mgmt', 'none'], capture_output=True)
+            # Remove any security configuration to prevent NM from asking for WEP/WPA keys
+            subprocess.run(['sudo', 'nmcli', 'connection', 'modify', 'Hotspot', 'remove', '802-11-wireless-security'], capture_output=True)
             # Bring connection up
             add_log("Bringing open hotspot connection up...")
             result = subprocess.run(['sudo', 'nmcli', 'connection', 'up', 'Hotspot'], capture_output=True, text=True)

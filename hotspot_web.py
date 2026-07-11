@@ -3,6 +3,7 @@ import sys
 import subprocess
 import threading
 import time
+import atexit
 
 # Auto-install Flask if not present
 try:
@@ -226,6 +227,11 @@ def api_start():
     
     # Run in a background thread so the HTTP response is not blocked
     def start_thread():
+        # Stop dnsmasq and firewall to avoid port conflicts with NetworkManager
+        add_log("Stopping dnsmasq system service and disabling UFW firewall...")
+        subprocess.run(['sudo', 'systemctl', 'stop', 'dnsmasq'], capture_output=True)
+        subprocess.run(['sudo', 'ufw', 'disable'], capture_output=True)
+        
         # Step 1: Clean up any old connection profile named 'Hotspot'
         add_log("Cleaning up old connection profiles...")
         subprocess.run(['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], capture_output=True)
@@ -283,6 +289,11 @@ def api_stop():
             subprocess.run(['sudo', 'nmcli', 'device', 'disconnect', interface], capture_output=True)
             add_log(f"Interface {interface} disconnected.")
             
+        # Restore services back to their original state
+        add_log("Restoring dnsmasq system service and enabling UFW firewall...")
+        subprocess.run(['sudo', 'systemctl', 'start', 'dnsmasq'], capture_output=True)
+        subprocess.run(['sudo', 'ufw', 'enable'], capture_output=True)
+            
     threading.Thread(target=stop_thread).start()
     return jsonify({'success': True, 'message': 'Hotspot stopping process initiated.'})
 
@@ -293,3 +304,17 @@ if __name__ == '__main__':
     print(" Access it via: http://<raspberry-pi-ip>:5002")
     print("--------------------------------------------------")
     app.run(host='0.0.0.0', port=5002, debug=False)
+
+def cleanup_on_exit():
+    print("\n[SYSTEM] Application shutting down. Restoring services and cleaning up hotspot...")
+    # Delete the connection profile to clean up
+    subprocess.run(['sudo', 'nmcli', 'connection', 'down', 'Hotspot'], capture_output=True)
+    subprocess.run(['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], capture_output=True)
+    
+    # Restore dnsmasq and UFW firewall
+    subprocess.run(['sudo', 'systemctl', 'start', 'dnsmasq'], capture_output=True)
+    subprocess.run(['sudo', 'ufw', 'enable'], capture_output=True)
+    print("[SYSTEM] Cleanup finished. Goodbye!")
+
+# Register cleanup handler
+atexit.register(cleanup_on_exit)

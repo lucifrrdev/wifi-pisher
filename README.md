@@ -58,6 +58,6 @@ sudo .venv/bin/python hotspot_web.py
 ### 3. Akses Dashboard
 Buka browser pada perangkat lain (seperti HP atau Laptop) yang terhubung ke jaringan lokal yang sama dengan Raspberry Pi, lalu akses link:
 ```text
-http://<IP_RASPBERRY_PI>:5000
+http://<IP_RASPBERRY_PI>:5002
 ```
 *(Ganti `<IP_RASPBERRY_PI>` dengan alamat IP internal Raspberry Pi Anda).*

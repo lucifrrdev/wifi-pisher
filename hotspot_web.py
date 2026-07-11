@@ -260,9 +260,9 @@ def api_stop():
     return jsonify({'success': True, 'message': 'Hotspot stopping process initiated.'})
 
 if __name__ == '__main__':
-    # Binds to all interfaces on port 5000
+    # Binds to all interfaces on port 5002
     print("--------------------------------------------------")
     print(" Flipper Zero Hotspot Web Server running!")
-    print(" Access it via: http://<raspberry-pi-ip>:5000")
+    print(" Access it via: http://<raspberry-pi-ip>:5002")
     print("--------------------------------------------------")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5002, debug=False)

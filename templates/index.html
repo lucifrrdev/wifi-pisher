@@ -358,6 +358,21 @@
             box-shadow: 0 0 15px rgba(255, 77, 77, 0.2);
         }
 
+        .btn-exit {
+            background-color: transparent;
+            color: #888;
+            border: 2px solid #333;
+            margin-top: 8px;
+        }
+
+        .btn-exit:hover {
+            color: #ff4d4d;
+            border-color: #ff4d4d;
+            background-color: rgba(255, 77, 77, 0.05);
+            box-shadow: 0 0 12px rgba(255, 77, 77, 0.2);
+        }
+
+
         .btn-action:disabled {
             background-color: #333 !important;
             color: #777 !important;
@@ -572,13 +587,17 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 10px;">
+                <div style="margin-top: 10px; display: flex; flex-direction: column;">
                     <button class="btn-action btn-start" id="action-btn" onclick="handleActionButtonClick()">
                         Start Hotspot
+                    </button>
+                    <button class="btn-action btn-exit" id="exit-btn" onclick="handleExitButtonClick()">
+                        Shutdown Server
                     </button>
                 </div>
             </div>
         </div>
+
 
         <!-- Terminal log outputs -->
         <div class="console-card">
@@ -731,7 +750,41 @@ _.-'  '--.
             }
         }
 
+        // Exit System (Shutdown Flask Server)
+        function handleExitButtonClick() {
+            if (isTransitioning) return;
+            if (!confirm("Apakah Anda yakin ingin mematikan server hotspot? (Ini akan menghentikan seluruh layanan)")) {
+                return;
+            }
+
+            isTransitioning = true;
+            const actionBtn = document.getElementById("action-btn");
+            const exitBtn = document.getElementById("exit-btn");
+            
+            actionBtn.disabled = true;
+            exitBtn.disabled = true;
+            exitBtn.textContent = "Shutting down...";
+            document.getElementById("dolphin-mascot").textContent = dolphinTransition;
+            document.getElementById("dolphin-speech").textContent = "Goodbye...";
+
+            fetch('/api/shutdown', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("Server sedang mematikan sistem dan merestorasi koneksi. Tab browser ini dapat ditutup.");
+                document.getElementById("dolphin-speech").textContent = "OFFLINE";
+                document.getElementById("dolphin-mascot").textContent = dolphinIdle;
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Server sedang mematikan sistem. Halaman tidak lagi dapat diakses.");
+            });
+        }
+
         // Helper to get selected interface
+
         function getSelectedInterface() {
             return document.getElementById("interface-select").value;
         }

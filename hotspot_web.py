@@ -4,6 +4,8 @@ import subprocess
 import threading
 import time
 import atexit
+import signal
+
 
 # Auto-install Flask if not present
 try:
@@ -287,6 +289,18 @@ def api_stop():
     threading.Thread(target=stop_thread).start()
     return jsonify({'success': True, 'message': 'Hotspot stopping process initiated.'})
 
+@app.route('/api/shutdown', methods=['POST'])
+def api_shutdown():
+    add_log("Shutdown requested from Web UI. Initiating exit...")
+    
+    def shutdown_thread():
+        time.sleep(1.0)
+        os.kill(os.getpid(), signal.SIGINT)
+        
+    threading.Thread(target=shutdown_thread).start()
+    return jsonify({'success': True, 'message': 'System shutting down...'})
+
+
 if __name__ == '__main__':
     # Prepare services once at startup (stop dnsmasq and disable UFW) to prevent port conflicts
     print("[SYSTEM] Stopping dnsmasq and disabling UFW firewall for hotspot compatibility...")
@@ -307,7 +321,7 @@ def cleanup_on_exit():
         (['sudo', 'nmcli', 'connection', 'down', 'Hotspot'], "Stopping Hotspot connection"),
         (['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], "Deleting Hotspot connection"),
         (['sudo', 'systemctl', 'start', 'dnsmasq'], "Starting dnsmasq service"),
-        (['sudo', 'ufw', 'enable'], "Enabling UFW firewall")
+        (['sudo', 'ufw', '--force', 'enable'], "Enabling UFW firewall")
     ]
     
     for cmd, desc in cleanup_commands:

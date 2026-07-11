@@ -425,6 +425,61 @@
         .log-system {
             color: var(--flipper-orange);
         }
+
+        /* Client List Card */
+        .clients-card {
+            border: 2px solid var(--flipper-border);
+            background-color: #161616;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .clients-header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--flipper-orange-dim);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .clients-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: var(--flipper-text);
+            text-align: left;
+        }
+
+        .clients-table th {
+            color: #888;
+            padding: 8px;
+            border-bottom: 2px solid #222;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .clients-table td {
+            padding: 8px;
+            border-bottom: 1px solid #1f1f1f;
+        }
+
+        .clients-table tr:hover {
+            background-color: #1c1c1c;
+        }
+
+        .clients-empty {
+            color: #666;
+            text-align: center;
+            padding: 15px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -528,6 +583,17 @@
             </div>
             <div class="console-logs" id="console-logs-area">
                 <!-- Logs will be loaded dynamically -->
+            </div>
+        </div>
+
+        <!-- Connected Clients list -->
+        <div class="clients-card">
+            <div class="clients-header">
+                <span>Connected Clients</span>
+                <span>Devices List</span>
+            </div>
+            <div id="clients-list-container">
+                <div class="clients-empty">No devices connected</div>
             </div>
         </div>
     </div>
@@ -789,6 +855,33 @@ _.-'  '--.
                 // Auto scroll console if at bottom
                 if (logsArea.scrollHeight > oldScrollHeight) {
                     logsArea.scrollTop = logsArea.scrollHeight;
+                }
+
+                // Update Connected Clients UI
+                const clientsContainer = document.getElementById("clients-list-container");
+                if (data.clients && data.clients.length > 0) {
+                    let tableHtml = `<table class="clients-table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>IP Address</th>
+                                <th>MAC Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                    
+                    data.clients.forEach((client, index) => {
+                        tableHtml += `<tr>
+                            <td>${index + 1}</td>
+                            <td>${client.ip}</td>
+                            <td>${client.mac}</td>
+                        </tr>`;
+                    });
+                    
+                    tableHtml += `</tbody></table>`;
+                    clientsContainer.innerHTML = tableHtml;
+                } else {
+                    clientsContainer.innerHTML = `<div class="clients-empty">No devices connected</div>`;
                 }
             })
             .catch(err => {

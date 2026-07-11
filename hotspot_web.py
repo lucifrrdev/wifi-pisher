@@ -227,11 +227,6 @@ def api_start():
     
     # Run in a background thread so the HTTP response is not blocked
     def start_thread():
-        # Stop dnsmasq and firewall to avoid port conflicts with NetworkManager
-        add_log("Stopping dnsmasq system service and disabling UFW firewall...")
-        subprocess.run(['sudo', 'systemctl', 'stop', 'dnsmasq'], capture_output=True)
-        subprocess.run(['sudo', 'ufw', 'disable'], capture_output=True)
-        
         # Step 1: Clean up any old connection profile named 'Hotspot'
         add_log("Cleaning up old connection profiles...")
         subprocess.run(['sudo', 'nmcli', 'connection', 'delete', 'Hotspot'], capture_output=True)
@@ -289,15 +284,15 @@ def api_stop():
             subprocess.run(['sudo', 'nmcli', 'device', 'disconnect', interface], capture_output=True)
             add_log(f"Interface {interface} disconnected.")
             
-        # Restore services back to their original state
-        add_log("Restoring dnsmasq system service and enabling UFW firewall...")
-        subprocess.run(['sudo', 'systemctl', 'start', 'dnsmasq'], capture_output=True)
-        subprocess.run(['sudo', 'ufw', 'enable'], capture_output=True)
-            
     threading.Thread(target=stop_thread).start()
     return jsonify({'success': True, 'message': 'Hotspot stopping process initiated.'})
 
 if __name__ == '__main__':
+    # Prepare services once at startup (stop dnsmasq and disable UFW) to prevent port conflicts
+    print("[SYSTEM] Stopping dnsmasq and disabling UFW firewall for hotspot compatibility...")
+    subprocess.run(['sudo', 'systemctl', 'stop', 'dnsmasq'], capture_output=True)
+    subprocess.run(['sudo', 'ufw', 'disable'], capture_output=True)
+    
     # Binds to all interfaces on port 5002
     print("--------------------------------------------------")
     print(" Flipper Zero Hotspot Web Server running!")

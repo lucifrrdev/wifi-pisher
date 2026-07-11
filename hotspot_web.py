@@ -245,16 +245,18 @@ def api_stop():
             res_down = subprocess.run(['sudo', 'nmcli', 'connection', 'down', conn_name], capture_output=True, text=True)
             # Delete the profile to clean up
             res_del = subprocess.run(['sudo', 'nmcli', 'connection', 'delete', conn_name], capture_output=True, text=True)
+            # Force disconnect the device to be absolutely sure the hotspot stops broadcasting
+            subprocess.run(['sudo', 'nmcli', 'device', 'disconnect', interface], capture_output=True)
             
             if res_down.returncode == 0:
-                add_log("SUCCESS: Hotspot disabled.")
+                add_log(f"SUCCESS: Hotspot disabled on {interface}.")
             else:
                 add_log(f"WARNING: Down command output: {res_down.stderr.strip()}")
         else:
-            add_log("No active hotspot connection found on wlan0. Attempting hard interface disconnect...")
+            add_log(f"No active hotspot connection found on {interface}. Attempting hard interface disconnect...")
             # Fallback hard disconnect
             subprocess.run(['sudo', 'nmcli', 'device', 'disconnect', interface], capture_output=True)
-            add_log("Interface wlan0 disconnected.")
+            add_log(f"Interface {interface} disconnected.")
             
     threading.Thread(target=stop_thread).start()
     return jsonify({'success': True, 'message': 'Hotspot stopping process initiated.'})
